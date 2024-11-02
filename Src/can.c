@@ -12,6 +12,15 @@
 
 CAN_State can_state = CAN_State_Sleep;
 
+/**
+ * @brief Find an empty CAN Transmit mailbox
+ * 
+ * @return [uint8_t] Index of Empty Mailbox 
+ */
+static uint8_t Get_Empty_Mailbox() {
+    return (CAN->TSR & CAN_TSR_CODE_Msk) >> CAN_TSR_CODE_Pos;
+}
+
 CAN_Status CAN_Init() {
     RCC->APB1ENR |= RCC_APB1ENR_CANEN;
     RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
