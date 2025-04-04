@@ -41,3 +41,34 @@ TIM_Status TIM_Init(TIM_Instance *TIM_Instance) {
 
     return TIM_OK;
 }
+
+TIM_Status TIM_Start(TIM_Instance *TIM_Instance) {
+    if (TIM_Instance == NULL) {
+        return TIM_Error;
+    }
+
+    // Start the timer
+    TIM_Instance->TIMx->CR1 |= TIM_CR1_CEN;
+
+    return TIM_OK;
+}
+
+TIM_Status TIM_Stop(TIM_Instance *TIM_Instance) {
+    if (TIM_Instance == NULL) {
+        return TIM_Error;
+    }
+
+    // Stop the timer
+    TIM_Instance->TIMx->CR1 &= ~TIM_CR1_CEN;
+
+    return TIM_OK;
+}
+
+uint32_t TIM_GetCounter(TIM_Instance *TIM_Instance) {
+    if (TIM_Instance == NULL) {
+        return 0;
+    }
+
+    // Get the current counter value
+    return TIM_Instance->TIMx->CNT;
+}

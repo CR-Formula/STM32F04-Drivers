@@ -28,3 +28,30 @@ GPIO_Status GPIO_Init(GPIO_Instance *GPIO_Instance) {
 
     return GPIO_OK;
 }
+
+void GPIO_Set(GPIO_TypeDef *port, uint16_t pin) {
+    if (port == NULL || pin > 15) {
+        return;
+    }
+
+    // Set the pin high
+    port->ODR |= (1 << pin);
+}
+
+void GPIO_Reset(GPIO_TypeDef *port, uint16_t pin) {
+    if (port == NULL || pin > 15) {
+        return;
+    }
+
+    // Set the pin low
+    port->ODR &= ~(1 << pin);
+}
+
+void GPIO_Toggle(GPIO_TypeDef *port, uint16_t pin) {
+    if (port == NULL || pin > 15) {
+        return;
+    }
+
+    // Toggle the pin state
+    port->ODR ^= (1 << pin);
+}

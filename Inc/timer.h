@@ -80,6 +80,13 @@ TIM_Status TIM_Init(TIM_Instance *TIM_Instance);
 void TIM_Start(TIM_TypeDef *TIMx);
 
 /**
+ * @brief Stop the Timer
+ * 
+ * @param TIMx [TIM_TypeDef] Pointer to the Timer instance
+ */
+void TIM_Stop(TIM_TypeDef *TIMx);
+
+/**
  * @brief Return the current count of the timer
  * 
  * @param TIMx [TIM_TypeDef] Pointer to the Timer instance
