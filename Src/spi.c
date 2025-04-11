@@ -1,7 +1,16 @@
+/************************************************
+* @file    spi.c 
+* @author  Ava Fischer
+* @date    4/2025
+* 
+* @brief   SPI Driver Implementation
+*
+* 4-11: Feeling okay about the initialization; Transmit and Receive definitely still a WIP
+***********************************************/
+
 #include "spi.h"
 
-
-void SPI2_Init(){
+void SPI1_Init(){
 
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
     RCC->APB1ENR |= RCC_APB1ENR_SPI1EN;
@@ -30,15 +39,42 @@ void SPI2_Init(){
 
     SPI1->CR2 &= ~SPI_CR2_FRF; // SPI Motorola Mode
     SPI1->CR2 &= !SPI_CR2_SSOE; // Master handles this
+
+    GPIOA->BSRR = GPIO_BSRR_BS4;
 }
 
 SPI_Status SPI_Transmit(SPI_TypeDef* SPI, uint8_t* data, size_t len){
 
+    //wait until the master initiates communication
+    while (!(SPI->SR & SPI_SR_RXNE));
+
     // Enable SPI
     SPI->CR1 |= SPI_CR1_SPE;
 
+    for (size_t i = 0; i < len; i++) {
+        while (!(SPI->SR & SPI_SR_TXE)); // TXE = 0 means Tx buffer not empty
+        SPI->DR = data[i];
+        while (!(SPI->SR & SPI_SR_RXNE)); // RXNE = 0 means Rx buffer empty
+        (void)SPI->DR; 
+    }
+
+    // Disable SPI
+    SPI->CR1 &= ~SPI_CR1_SPE;
+
+    return SPI_OK;
 }
 
 SPI_Status SPI_Receive(SPI_TypeDef* SPI, uint8_t* buf, size_t len){
 
+    SPI->CR1 |= SPI_CR1_SPE;
+
+    for (size_t i = 0; i < len; i++) {
+        while (!(SPI->SR & SPI_SR_RXNE));
+        buf[i] = SPI->DR;
+    }
+
+    // Disable SPI
+    SPI->CR1 &= ~SPI_CR1_SPE;
+
+    return SPI_OK;
 }

@@ -1,4 +1,10 @@
-
+/************************************************
+* @file    spi.h 
+* @author  Ava Fischer
+* @date    4/2025
+* 
+* @brief   Prototype Functions for SPI Driver
+***********************************************/
 
 #include "stm32f042x6.h"
 #include <stdint.h>
