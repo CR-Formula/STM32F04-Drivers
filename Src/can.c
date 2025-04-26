@@ -22,31 +22,40 @@ static uint8_t Get_Empty_Mailbox() {
 }
 
 CAN_Status CAN_Init() {
-    RCC->APB1ENR |= RCC_APB1ENR_CANEN;
     RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
+    RCC->APB1ENR |= RCC_APB1ENR_CANEN;
 
-    // Remap PA11 and PA12 to PA9 and PA10
+    // Remap to PA11 and PA12
     SYSCFG->CFGR1 |= SYSCFG_CFGR1_PA11_PA12_RMP;
 
-    // GPIO Configuration
-    GPIOA->MODER &= ~GPIO_MODER_MODER11 & ~GPIO_MODER_MODER12;
-    GPIOA->MODER |= (0x2 << GPIO_MODER_MODER11_Pos) | (0x2 << GPIO_MODER_MODER12_Pos);
-    GPIOA->AFR[1] |= (0x4 << GPIO_AFRH_AFSEL11_Pos) | (0x4 << GPIO_AFRH_AFSEL12_Pos);
-    GPIOA->OTYPER |= GPIO_OTYPER_OT_12;
-    GPIOA->OTYPER &= ~GPIO_OTYPER_OT_11;
-    GPIOA->PUPDR |= (0x1 << GPIO_PUPDR_PUPDR12_Pos);
-    GPIOA->PUPDR &= ~GPIO_PUPDR_PUPDR11;
-    GPIOA->OSPEEDR |= (0x3 << GPIO_OSPEEDR_OSPEEDR11_Pos) | (0x3 << GPIO_OSPEEDR_OSPEEDR12_Pos);
+    // Configure PA12 CAN Tx
+    GPIOA->MODER &= ~GPIO_MODER_MODER12;
+    GPIOA->MODER |= (0x2 << GPIO_MODER_MODER12_Pos); // Alternate Function
+    GPIOA->OTYPER &= ~GPIO_OTYPER_OT_12; // Push-Pull
+    GPIOA->PUPDR &= ~GPIO_PUPDR_PUPDR12; // No Pull-Up or Pull-Down
+    GPIOA->AFR[1] |= (0x4 << GPIO_AFRH_AFSEL12_Pos);
+    GPIOA->OSPEEDR &= ~GPIO_OSPEEDER_OSPEEDR12;
+    GPIOA->OSPEEDR |= (0x2 << GPIO_OSPEEDR_OSPEEDR12_Pos); // High Speed
 
-    // CAN Configuration
-    CAN->MCR |= CAN_MCR_RESET;
-    CAN->MCR &= ~CAN_MCR_SLEEP;
-    while(CAN->MSR & CAN_MSR_SLAK); // Exit Sleep Mode
-    CAN->MCR |= CAN_MCR_INRQ;
-    while(!(CAN->MSR & CAN_MSR_INAK)); // Enter Initialization Mode
-    can_state = CAN_State_Initialization;
+    // Configure PB8 CAN Rx
+    GPIOB->MODER &= ~GPIO_MODER_MODER8;
+    GPIOB->MODER |= (0x2 << GPIO_MODER_MODER8_Pos); // Alternate Function
+    GPIOB->OTYPER &= ~GPIO_OTYPER_OT_8; // Push-Pull
+    GPIOB->PUPDR &= ~GPIO_PUPDR_PUPDR8; // Clear Pull-Up and Pull-Down
+    GPIOB->PUPDR |= (0x1 << GPIO_PUPDR_PUPDR8_Pos); // Pull-Up
+    GPIOB->AFR[1] |= (0x4 << GPIO_AFRH_AFSEL8_Pos);
+    GPIOB->OSPEEDR &= ~GPIO_OSPEEDER_OSPEEDR8;
+    GPIOB->OSPEEDR |= (0x2 << GPIO_OSPEEDR_OSPEEDR8_Pos); // High Speed
 
-    // Configure CAN1 Settings
+    // Initialize the CAN Peripheral
+    CAN->MCR |= CAN_MCR_RESET; // Reset CAN
+    CAN->MCR &= ~CAN_MCR_SLEEP; // Exit Sleep Mode
+    while (CAN->MSR & CAN_MSR_SLAK); // Wait until Sleep Mode is exited
+    CAN->MCR |= CAN_MCR_INRQ; // Request Initialization Mode
+    while (!(CAN->MSR & CAN_MSR_INAK)); // Wait until Initialization Mode is entered
+
+    // Configure CAN Settings
     CAN->MCR &= ~CAN_MCR_TXFP & ~CAN_MCR_RFLM & ~CAN_MCR_TTCM 
                 & ~CAN_MCR_ABOM & ~CAN_MCR_TXFP;
     CAN->MCR |= CAN_MCR_AWUM | CAN_MCR_NART;
@@ -56,8 +65,8 @@ CAN_Status CAN_Init() {
     CAN->BTR &= ~CAN_BTR_SILM & ~CAN_BTR_LBKM;
     CAN->BTR &= ~CAN_BTR_SJW & ~CAN_BTR_TS1 
                 & ~CAN_BTR_TS2 & ~CAN_BTR_BRP;
-    CAN->BTR |= (0xD << CAN_BTR_TS1_Pos) | (0x2 << CAN_BTR_TS2_Pos) 
-                | (0x6 << CAN_BTR_BRP_Pos) | (0x1 << CAN_BTR_SJW_Pos);
+    CAN->BTR |= (0xC << CAN_BTR_TS1_Pos) | (0x1 << CAN_BTR_TS2_Pos) 
+                | (0x5 << CAN_BTR_BRP_Pos) | (0x0 << CAN_BTR_SJW_Pos);
 
     return CAN_OK;
 }
