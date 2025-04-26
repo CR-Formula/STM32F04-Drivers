@@ -25,6 +25,7 @@ CAN_Status CAN_Init() {
     RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
     RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
     RCC->APB1ENR |= RCC_APB1ENR_CANEN;
+    RCC->APB2ENR |= RCC_APB2ENR_SYSCFGCOMPEN;
 
     // Remap to PA11 and PA12
     SYSCFG->CFGR1 |= SYSCFG_CFGR1_PA11_PA12_RMP;
@@ -59,6 +60,7 @@ CAN_Status CAN_Init() {
     CAN->MCR &= ~CAN_MCR_TXFP & ~CAN_MCR_RFLM & ~CAN_MCR_TTCM 
                 & ~CAN_MCR_ABOM & ~CAN_MCR_TXFP;
     CAN->MCR |= CAN_MCR_AWUM | CAN_MCR_NART;
+    can_state = CAN_State_Initialization;
 
     // Set Baud Rate
     // http://www.bittiming.can-wiki.info/
@@ -115,7 +117,7 @@ CAN_Status CAN_Stop() {
 
 CAN_Status CAN_Transmit(CAN_Frame *frame) {
     // Basic Type Checking
-    if (frame == NULL || can_state != CAN_State_Normal) {
+    if (frame == NULL) { //  || can_state != CAN_State_Normal
         return CAN_Error;
     }
 
