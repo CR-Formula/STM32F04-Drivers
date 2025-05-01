@@ -19,6 +19,6 @@ typedef enum {
 
 /* Function Prototypes ------------------------------------------------------*/
 
-void SPI2_Init();
+void SPI1_Init();
 SPI_Status SPI_Transmit(SPI_TypeDef* SPI, uint8_t* data, size_t len);
 SPI_Status SPI_Receive(SPI_TypeDef* SPI, uint8_t* buf, size_t len);
