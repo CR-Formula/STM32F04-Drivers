@@ -13,4 +13,4 @@
  * 
  * @note Uses the HSI48 through the PLL
  */
-void Sysclock_48();
+void SystemClock_Config();
