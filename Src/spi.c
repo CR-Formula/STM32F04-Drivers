@@ -12,39 +12,64 @@
 
 #define TIMEOUT 1000 // ???
 
-void SPI1_Init(){
+void SPI1_Init(SPI_Mode* mode){
 
-    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
-    RCC->APB1ENR |= RCC_APB1ENR_SPI1EN;
+    RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+    RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
 
     // Write proper GPIO registers: Configure GPIO for MOSI, MISO and SCK pins
     // See p.33 of the datasheet for the STM32F042F6P6
-    GPIOA->MODER &= ~(GPIO_MODER_MODE5 | GPIO_MODER_MODE6 | GPIO_MODER_MODE7);
-    GPIOA->MODER |= (0x02 << GPIO_MODER_MODE5_Pos)
-             | (0x02 << GPIO_MODER_MODE6_Pos) | (0x02 << GPIO_MODER_MODE7_Pos);
+    GPIOA->MODER &= ~(GPIO_MODER_MODER5 | GPIO_MODER_MODER6 | GPIO_MODER_MODER7);
+    GPIOA->MODER |= (0x02 << GPIO_MODER_MODER5_Pos)
+             | (0x02 << GPIO_MODER_MODER6_Pos) | (0x02 << GPIO_MODER_MODER7_Pos);
 
-    GPIOA->AFR[0] |= (0x00 << GPIO_AFRH_AFSEL5_Pos) 
-             | (0x00 << GPIO_AFRH_AFSEL6_Pos) | (0x00 << GPIO_AFRH_AFSEL7_Pos);
+    GPIOA->AFR[0] |= (0x00 << GPIO_AFRL_AFSEL5_Pos) 
+             | (0x00 << GPIO_AFRL_AFSEL6_Pos) | (0x00 << GPIO_AFRL_AFSEL7_Pos);
 
-    GPIOB->MODER &= ~GPIO_MODER_MODE1;
-    GPIOB->MODER |= (0x01 << GPIO_MODER_MODE1_Pos); // Set PB1 to output mode
+    GPIOB->MODER &= ~GPIO_MODER_MODER1;
+    GPIOB->MODER |= (0x01 << GPIO_MODER_MODER1_Pos); // Set PB1 to output mode
                          
-    GPIOA->PUPDR &= ~GPIO_PUPDR_PUPD7;
-    GPIOA->PUPDR |= (0x2 << GPIO_PUPDR_PUPD7);
+    // Clear PUPDR7 field then set it to 0b10
+    GPIOA->PUPDR &= ~(0x3UL << GPIO_PUPDR_PUPDR7_Pos);
+    GPIOA->PUPDR |=  (0x2UL << GPIO_PUPDR_PUPDR7_Pos);
 
-    GPIOA->OSPEEDR |= (0x03 << GPIO_OSPEEDR_OSPEED4_Pos) | (0x03 << GPIO_OSPEEDR_OSPEED5_Pos)
-    | (0x03 << GPIO_OSPEEDR_OSPEED6_Pos) | (0x03 << GPIO_OSPEEDR_OSPEED7_Pos);
+    GPIOA->OSPEEDR |= (0x03 << GPIO_OSPEEDR_OSPEEDR4_Pos) | (0x03 << GPIO_OSPEEDR_OSPEEDR5_Pos)
+    | (0x03 << GPIO_OSPEEDR_OSPEEDR6_Pos) | (0x03 << GPIO_OSPEEDR_OSPEEDR7_Pos);
 
-    SPI1->CR1 &= ~SPI_CR1_BIDIMODE & ~SPI_CR1_CRCEN & ~SPI_CR1_DFF & ~SPI_CR1_RXONLY
-    & ~SPI_CR1_SSM & ~SPI_CR1_LSBFIRST & ~SPI_CR1_CPHA & ~SPI_CR1_CPOL;
+    SPI1->CR1 &= ~(SPI_CR1_BIDIMODE & SPI_CR1_CRCEN & SPI_CR1_RXONLY &
+    ~SPI_CR1_SSM & SPI_CR1_LSBFIRST & SPI_CR1_CPHA & SPI_CR1_CPOL);
+
+    // HERE WE GO
+    SPI1->CR1 &= ~SPI_CR1_CPOL;
+    SPI1->CR1 |=  SPI_CR1_CPHA;
+
+    // SPI1->CR1 |=  SPI_CR1_CPOL;
+    // SPI1->CR1 &= ~SPI_CR1_CPHA;
+
+    // SPI1->CR1 |=  (SPI_CR1_CPOL | SPI_CR1_CPHA);
 
     SPI1->CR1 &= ~SPI_CR1_MSTR;
     SPI1->CR1 |= (0x5 << SPI_CR1_BR_Pos); // sysclock / 64
 
-    SPI1->CR2 &= ~SPI_CR2_FRF; // SPI Motorola Mode
-    SPI1->CR2 |= SPI_CR2_SSOE; 
+    SPI1->CR1 |= SPI_CR1_SSM;
+    
+    if (mode == SPI_MODE_MASTER) {
+        SPI1->CR1 |= SPI_CR1_MSTR;
+        SPI1->CR1 |= SPI_CR1_SSI;        // NSS high
+    } else {
+        SPI1->CR1 &= ~SPI_CR1_MSTR;
+        SPI1->CR1 &= ~SPI_CR1_SSI;       // NSS low — means selected
+    }
 
-    GPIOA->BSRR = GPIO_BSRR_BS4;
+    SPI1->CR2 &= ~SPI_CR2_FRF; // SPI Motorola Mode
+    SPI1->CR2 |= SPI_CR2_SSOE;
+
+    SPI1->CR1 |= SPI_CR1_SPE;
+
+    SPI1->CR2 &= ~SPI_CR2_DS_Msk;
+    SPI1->CR2 |= (0x7 << SPI_CR2_DS_Pos);
+
+    GPIOA->BSRR = GPIO_BSRR_BS_4;
 }
 
 SPI_Status SPI_Transmit(SPI_TypeDef* SPI, uint8_t* data, size_t len){
@@ -60,57 +85,64 @@ SPI_Status SPI_Transmit(SPI_TypeDef* SPI, uint8_t* data, size_t len){
     }
 
     // chip select
-    GPIOB->BSRR = GPIO_BSRR_BR1;
+    GPIOB->BSRR = GPIO_BSRR_BR_1;
   
-    // Enable SPI
-    SPI->CR1 |= SPI_CR1_SPE; 
     if ((SPI->CR2 & SPI_CR2_DS_Msk) == (0xF << SPI_CR2_DS_Pos)) { // 16-bit Data Frame
       while (len > 0) {
+
+        uint32_t timeout = TIMEOUT;
+
         while (!(SPI->SR & SPI_SR_TXE)); 
         SPI->DR = *((uint16_t*)data);
         // increment data pointer by 2 bytes
         data += sizeof(uint16_t);
         len--;
+
+        // timeout
         while (!(SPI->SR & SPI_SR_RXNE)){
-          // timeout
-          uint32_t timeout = TIMEOUT;
           if (--timeout == 0) return SPI_ERROR;
         };
+
         (void)SPI->DR;
       }
     }
     else { // 8-bit Data Frame
+
       while (len > 0) {
+
+        uint32_t timeout = TIMEOUT;
+
         while (!(SPI->SR & SPI_SR_TXE));
         SPI->DR = *data;
         data++;
         len--;
+
+        // timeout
         while (!(SPI->SR & SPI_SR_RXNE)){
-          // timeout
-          uint32_t timeout = TIMEOUT;
           if (--timeout == 0) return SPI_ERROR;
         };
+
         (void)SPI->DR;
       }
     }
+
+    uint32_t timeout = TIMEOUT;
+
     // Wait for last byte to be sent
     while (!(SPI->SR & SPI_SR_TXE)){
       // timeout
-      uint32_t timeout = TIMEOUT;
       if (--timeout == 0) return SPI_ERROR;
     };
+
+    timeout = TIMEOUT;
 
     while (SPI->SR & SPI_SR_BSY){
       // timeout
-      uint32_t timeout = TIMEOUT;
       if (--timeout == 0) return SPI_ERROR;
-    };
-  
-    // Disable SPI
-    SPI->CR1 &= ~SPI_CR1_SPE; 
+    }; 
 
     // Deselect chip
-    GPIOB->BSRR = GPIO_BSRR_BS1;
+    GPIOB->BSRR = GPIO_BSRR_BS_1;
   
     return SPI_OK;
 }
@@ -118,7 +150,7 @@ SPI_Status SPI_Transmit(SPI_TypeDef* SPI, uint8_t* data, size_t len){
 SPI_Status SPI_Receive(SPI_TypeDef* SPI, uint8_t* buf, size_t len){
 
     // null pointer checks
-    if (SPI == NULL || data == NULL || len <= 0) {
+    if (SPI == NULL || buf == NULL || len <= 0) {
       return SPI_ERROR;
     }
 
@@ -128,10 +160,7 @@ SPI_Status SPI_Receive(SPI_TypeDef* SPI, uint8_t* buf, size_t len){
     }
 
     // chip select
-    GPIOB->BSRR = GPIO_BSRR_BR1;
-
-    // Enable SPI
-    SPI->CR1 |= SPI_CR1_SPE;
+    GPIOB->BSRR = GPIO_BSRR_BR_1;
     
     if ((SPI->CR2 & SPI_CR2_DS_Msk) == (0xF << SPI_CR2_DS_Pos)) { // 16-bit Data Frame
       while (len > 0) {
@@ -175,23 +204,18 @@ SPI_Status SPI_Receive(SPI_TypeDef* SPI, uint8_t* buf, size_t len){
     }
 
     // Wait for last byte to be received
+    uint32_t timeout = TIMEOUT;
     while(SPI->SR & SPI_SR_RXNE){
-      // timeout
-      uint32_t timeout = TIMEOUT;
       if (--timeout == 0) return SPI_ERROR;
     };
 
+    timeout = TIMEOUT;
     while (SPI->SR & SPI_SR_BSY){
-      // timeout
-      uint32_t timeout = TIMEOUT;
       if (--timeout == 0) return SPI_ERROR;
     };
   
     // Deselect chip
-    GPIOB->BSRR = GPIO_BSRR_BS1;
-    
-    // Disable SPI
-    SPI->CR1 &= ~SPI_CR1_SPE;
+    GPIOB->BSRR = GPIO_BSRR_BS_1;
   
     return SPI_OK;
 }

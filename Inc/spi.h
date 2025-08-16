@@ -17,8 +17,13 @@ typedef enum {
     SPI_OK,
 } SPI_Status;
 
+typedef enum {
+    SPI_MODE_MASTER,
+    SPI_MODE_SLAVE
+} SPI_Mode;
+
 /* Function Prototypes ------------------------------------------------------*/
 
-void SPI1_Init();
+void SPI1_Init(SPI_Mode* mode);
 SPI_Status SPI_Transmit(SPI_TypeDef* SPI, uint8_t* data, size_t len);
 SPI_Status SPI_Receive(SPI_TypeDef* SPI, uint8_t* buf, size_t len);
