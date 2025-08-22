@@ -15,6 +15,7 @@
 void SPI1_Init(SPI_Mode* mode){
 
     RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
     RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
 
     // Write proper GPIO registers: Configure GPIO for MOSI, MISO and SCK pins
@@ -36,8 +37,8 @@ void SPI1_Init(SPI_Mode* mode){
     GPIOA->OSPEEDR |= (0x03 << GPIO_OSPEEDR_OSPEEDR4_Pos) | (0x03 << GPIO_OSPEEDR_OSPEEDR5_Pos)
     | (0x03 << GPIO_OSPEEDR_OSPEEDR6_Pos) | (0x03 << GPIO_OSPEEDR_OSPEEDR7_Pos);
 
-    SPI1->CR1 &= ~(SPI_CR1_BIDIMODE & SPI_CR1_CRCEN & SPI_CR1_RXONLY &
-    ~SPI_CR1_SSM & SPI_CR1_LSBFIRST & SPI_CR1_CPHA & SPI_CR1_CPOL);
+    SPI1->CR1 &= ~(SPI_CR1_BIDIMODE | SPI_CR1_CRCEN | SPI_CR1_RXONLY |
+    SPI_CR1_SSM | SPI_CR1_LSBFIRST | SPI_CR1_CPHA | SPI_CR1_CPOL);
 
     // HERE WE GO
     SPI1->CR1 &= ~SPI_CR1_CPOL;
@@ -50,6 +51,8 @@ void SPI1_Init(SPI_Mode* mode){
 
     SPI1->CR1 &= ~SPI_CR1_MSTR;
     SPI1->CR1 |= (0x5 << SPI_CR1_BR_Pos); // sysclock / 64
+
+    SPI1->CR1 &= ~SPI_CR1_RXONLY;
 
     SPI1->CR1 |= SPI_CR1_SSM;
     
@@ -64,12 +67,15 @@ void SPI1_Init(SPI_Mode* mode){
     SPI1->CR2 &= ~SPI_CR2_FRF; // SPI Motorola Mode
     SPI1->CR2 |= SPI_CR2_SSOE;
 
-    SPI1->CR1 |= SPI_CR1_SPE;
-
     SPI1->CR2 &= ~SPI_CR2_DS_Msk;
     SPI1->CR2 |= (0x7 << SPI_CR2_DS_Pos);
 
-    GPIOA->BSRR = GPIO_BSRR_BS_4;
+    SPI1->CR2 |= SPI_CR2_FRXTH;
+
+    SPI1->CR1 |= SPI_CR1_SPE;
+
+    //GPIOA->BSRR = GPIO_BSRR_BS_4;
+    GPIOB->BSRR = GPIO_BSRR_BS_1;  // Drive PB1 high after init
 }
 
 SPI_Status SPI_Transmit(SPI_TypeDef* SPI, uint8_t* data, size_t len){
@@ -114,6 +120,7 @@ SPI_Status SPI_Transmit(SPI_TypeDef* SPI, uint8_t* data, size_t len){
 
         while (!(SPI->SR & SPI_SR_TXE));
         SPI->DR = *data;
+        //*((__IO uint8_t *)&SPI->DR) = *data;
         data++;
         len--;
 
@@ -141,7 +148,7 @@ SPI_Status SPI_Transmit(SPI_TypeDef* SPI, uint8_t* data, size_t len){
       if (--timeout == 0) return SPI_ERROR;
     }; 
 
-    // Deselect chip
+    // // Deselect chip
     GPIOB->BSRR = GPIO_BSRR_BS_1;
   
     return SPI_OK;
