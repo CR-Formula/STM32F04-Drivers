@@ -34,20 +34,17 @@ void SPI1_Init(SPI_Mode* mode){
     GPIOA->PUPDR &= ~(0x3UL << GPIO_PUPDR_PUPDR7_Pos);
     GPIOA->PUPDR |=  (0x2UL << GPIO_PUPDR_PUPDR7_Pos);
 
+    GPIOA->PUPDR &= ~(GPIO_PUPDR_PUPDR5_Msk);
+    GPIOA->PUPDR |=  (0x2 << GPIO_PUPDR_PUPDR5_Pos);
+
     GPIOA->OSPEEDR |= (0x03 << GPIO_OSPEEDR_OSPEEDR4_Pos) | (0x03 << GPIO_OSPEEDR_OSPEEDR5_Pos)
     | (0x03 << GPIO_OSPEEDR_OSPEEDR6_Pos) | (0x03 << GPIO_OSPEEDR_OSPEEDR7_Pos);
 
     SPI1->CR1 &= ~(SPI_CR1_BIDIMODE | SPI_CR1_CRCEN | SPI_CR1_RXONLY |
     SPI_CR1_SSM | SPI_CR1_LSBFIRST | SPI_CR1_CPHA | SPI_CR1_CPOL);
 
-    // HERE WE GO
     SPI1->CR1 &= ~SPI_CR1_CPOL;
     SPI1->CR1 |=  SPI_CR1_CPHA;
-
-    // SPI1->CR1 |=  SPI_CR1_CPOL;
-    // SPI1->CR1 &= ~SPI_CR1_CPHA;
-
-    // SPI1->CR1 |=  (SPI_CR1_CPOL | SPI_CR1_CPHA);
 
     SPI1->CR1 &= ~SPI_CR1_MSTR;
     SPI1->CR1 |= (0x5 << SPI_CR1_BR_Pos); // sysclock / 64
@@ -65,17 +62,17 @@ void SPI1_Init(SPI_Mode* mode){
     }
 
     SPI1->CR2 &= ~SPI_CR2_FRF; // SPI Motorola Mode
-    SPI1->CR2 |= SPI_CR2_SSOE;
+    SPI1->CR2 &= ~SPI_CR2_SSOE;
 
     SPI1->CR2 &= ~SPI_CR2_DS_Msk;
     SPI1->CR2 |= (0x7 << SPI_CR2_DS_Pos);
 
     SPI1->CR2 |= SPI_CR2_FRXTH;
 
-    SPI1->CR1 |= SPI_CR1_SPE;
-
     //GPIOA->BSRR = GPIO_BSRR_BS_4;
-    GPIOB->BSRR = GPIO_BSRR_BS_1;  // Drive PB1 high after init
+    //GPIOB->BSRR = GPIO_BSRR_BS_1;  // Drive PB1 high after init
+    //SPI1->CR1 |= SPI_CR1_SPE;
+    Set_Pin(GPIOB, 1);
 }
 
 SPI_Status SPI_Transmit(SPI_TypeDef* SPI, uint8_t* data, size_t len){
@@ -90,8 +87,11 @@ SPI_Status SPI_Transmit(SPI_TypeDef* SPI, uint8_t* data, size_t len){
       return SPI_ERROR;
     }
 
+    SPI->CR1 |= SPI_CR1_SPE; // Enable SPI
+
     // chip select
-    GPIOB->BSRR = GPIO_BSRR_BR_1;
+    //GPIOB->BSRR = GPIO_BSRR_BR_1;
+    Set_Pin(GPIOB, 1);
   
     if ((SPI->CR2 & SPI_CR2_DS_Msk) == (0xF << SPI_CR2_DS_Pos)) { // 16-bit Data Frame
       while (len > 0) {
@@ -149,7 +149,10 @@ SPI_Status SPI_Transmit(SPI_TypeDef* SPI, uint8_t* data, size_t len){
     }; 
 
     // // Deselect chip
-    GPIOB->BSRR = GPIO_BSRR_BS_1;
+    //GPIOB->BSRR = GPIO_BSRR_BS_1;
+    Clear_Pin(GPIOB, 1);
+
+    SPI->CR1 &= ~SPI_CR1_SPE; // Disable SPI
   
     return SPI_OK;
 }
@@ -167,7 +170,8 @@ SPI_Status SPI_Receive(SPI_TypeDef* SPI, uint8_t* buf, size_t len){
     }
 
     // chip select
-    GPIOB->BSRR = GPIO_BSRR_BR_1;
+    //GPIOB->BSRR = GPIO_BSRR_BR_1;
+    Set_Pin(GPIOB, 1);
     
     if ((SPI->CR2 & SPI_CR2_DS_Msk) == (0xF << SPI_CR2_DS_Pos)) { // 16-bit Data Frame
       while (len > 0) {
@@ -222,7 +226,8 @@ SPI_Status SPI_Receive(SPI_TypeDef* SPI, uint8_t* buf, size_t len){
     };
   
     // Deselect chip
-    GPIOB->BSRR = GPIO_BSRR_BS_1;
+    //GPIOB->BSRR = GPIO_BSRR_BS_1;
+    Clear_Pin(GPIOB, 1);
   
     return SPI_OK;
 }
